@@ -47,8 +47,6 @@ class Swatch
   _ensureTextColors: ->
     if not @generatedTextColors
       # text colors are of kind [alpha, r, g, b]
-      # @titleTextColor = util.getTextColorForBackground @rgb, MIN_CONTRAST_TITLE_TEXT
-      # @bodyTextColor = util.getTextColorForBackground @rgb, MIN_CONTRAST_BODY_TEXT
 
       argb = [255, @rgb[0], @rgb[0], @rgb[0]]
 
