@@ -9,6 +9,24 @@ SIGBITS = 5
 RSHIFT = 8 - SIGBITS
 
 
+MIN_ALPHA_SEARCH_MAX_ITERATIONS = 10;
+MIN_ALPHA_SEARCH_PRECISION = 10;
+
+# argb-color util:
+Color =
+  WHITE: [255, 255, 255, 255]
+  BLACK: [255, 0, 0, 0]
+  alpha: (argb) ->
+    argb[0]
+  red: (argb) ->
+    argb[1]
+  green: (argb) ->
+    argb[2]
+  blue: (argb) ->
+    argb[3]
+  argb: (a, r, g, b) ->
+    [a, r, g, b]
+
 
 module.exports =
   clone: (o) ->
@@ -207,3 +225,77 @@ module.exports =
   RSHIFT: RSHIFT
   getColorIndex: (r, g, b) ->
     (r<<(2*SIGBITS)) + (g << SIGBITS) + b
+
+  Color: Color
+
+  calculateMinimumAlpha: (foreground, background, minContrastRatio) ->
+    if (Color.alpha background) != 255
+        throw new Error "background can not be translucent"
+
+    # First lets check that a fully opaque foreground has sufficient contrast
+    testForeground = @setAlphaComponent foreground, 255
+    testRatio = @calculateContrast testForeground, background
+    if testRatio < minContrastRatio
+        # Fully opaque foreground does not have sufficient contrast, return error
+        return -1
+
+    # Binary search to find a value with the minimum value which provides sufficient contrast
+    numIterations = 0
+    minAlpha = 0
+    maxAlpha = 255
+
+    while (numIterations <= MIN_ALPHA_SEARCH_MAX_ITERATIONS) and ((maxAlpha - minAlpha) > MIN_ALPHA_SEARCH_PRECISION)
+        testAlpha = Math.floor (minAlpha + maxAlpha) / 2
+
+        testForeground = @setAlphaComponent foreground, testAlpha
+        testRatio = @calculateContrast testForeground, background
+
+        if testRatio < minContrastRatio
+          minAlpha = testAlpha
+        else
+          maxAlpha = testAlpha
+
+        numIterations += 1
+
+    # Conservatively return the max of the range of possible alphas, which is known to pass.
+    maxAlpha
+
+  setAlphaComponent: (color, alpha) ->
+    [alpha, color[1], color[2], color[3]]
+
+  calculateContrast: (foreground, background) ->
+    if (Color.alpha background) != 255
+      throw new Error 'background can not be translucent'
+
+    if (Color.alpha foreground) < 255
+      # If the foreground is translucent, composite the foreground over the background
+      foreground = @compositeColors foreground, background
+
+    luminance1 = (@calculateLuminance foreground) + 0.05
+    luminance2 = (@calculateLuminance background) + 0.05
+
+    # Now return the lighter luminance divided by the darker luminance
+    (Math.max luminance1, luminance2) / (Math.min luminance1, luminance2)
+
+  calculateLuminance: (argb) ->
+    red = Color.red(argb) / 255.0
+    red = if red < 0.03928 then red / 12.92 else Math.pow((red + 0.055) / 1.055, 2.4)
+
+    green = Color.green(argb) / 255.0
+    green = if green < 0.03928 then green / 12.92 else Math.pow((green + 0.055) / 1.055, 2.4)
+
+    blue = Color.blue(argb) / 255.0;
+    blue = if blue < 0.03928 then blue / 12.92 else Math.pow((blue + 0.055) / 1.055, 2.4)
+
+    (0.2126 * red) + (0.7152 * green) + (0.0722 * blue)
+
+  compositeColors: (fg, bg) ->
+    alpha1 = Color.alpha(fg) / 255.0
+    alpha2 = Color.alpha(bg) / 255.0
+
+    a = (alpha1 + alpha2) * (1.0 - alpha1)
+    r = (Color.red(fg) * alpha1) + (Color.red(bg) * alpha2 * (1.0 - alpha1))
+    g = (Color.green(fg) * alpha1) + (Color.green(bg) * alpha2 * (1.0 - alpha1))
+    b = (Color.blue(fg) * alpha1) + (Color.blue(bg) * alpha2 * (1.0 - alpha1))
+
+    Color.argb a, r, g, b
