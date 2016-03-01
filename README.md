@@ -278,6 +278,17 @@ Task           | Description
 `browser-test` | Runs browser test specs (with `karma`)
 
 ## Notes
+
+### Intentional Deviation From `node-vibrant.js`
+The implementation of *Swatch::getBodyTextColor* and *Swatch::getTitleTextColor* is ported from:
+
+- [Palette](https://github.com/android/platform_frameworks_support/blob/master/v7/palette/src/main/java/android/support/v7/graphics/Palette.java)
+- and [ColoUtils](https://github.com/android/platform_frameworks_support/blob/master/v4/java/android/support/v4/graphics/ColorUtils.java)
+
+of the Palette Library to provider a more similar behavior.
+
+(no tests for now :-))
+
 ### Intentional Deviation From `vibrant.js`
 - `node-vibrant` takes image path, not the image object as parameter for the obvious reason that node.js environment has no access to HTML DOM object.
 - `node-vibrant` provides asynchronous API since most node.js image processing library is asynchronous. And the original `vibrant.js` workflow is asynchronous any way (though you will have to handle the image loading yourself, while `node-vibrant` does it for you).
